@@ -1,0 +1,22 @@
+{
+  "name": "Calculadora de Pago LFT + Experto IA",
+  "short_name": "Calculadora LFT",
+  "start_url": "./Calculadora Laboral.html",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#0284c7",
+  "description": "Calcula tu pago extra por horas, prima dominical y días obligatorios según la Ley Federal del Trabajo.",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "calculator-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "calculator-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

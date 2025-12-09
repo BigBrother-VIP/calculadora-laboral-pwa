@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Pago LFT + Experto IA</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0284c7"> 
+    <meta name="apple-mobile-web-app-title" content="Calculadora LFT">
+    
+    <link rel="icon" type="image/png" sizes="192x192" href="calculator-icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="calculator-icon-192.png">
+    
+    <meta property="og:title" content="Calculadora de Pago LFT">
+    <meta property="og:description" content="Calcula tu pago extra por horas, prima dominical y días obligatorios según la Ley Federal del Trabajo.">
+    <meta property="og:image" content="calculator-icon-192.png"> 
+    <meta property="og:url" content="TU_URL_AQUI"> <meta property="og:type" content="website">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Configuración de Tailwind para usar el modo oscuro basado en la clase 'dark'
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s;
+        }
+
+        /* El color de fondo del cuerpo depende de la clase 'dark' o su ausencia en el <html> */
+        :root {
+            background-color: #f1f5f9; /* light mode default */
+        }
+        html.dark :root {
+            background-color: #1f2937; /* dark mode default */
+        }
+
+        /* Oculta los controles de subir/bajar en inputs number */
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        /* Estilo para el botón de cargar */
+        .spinner {
+            border-top-color: transparent;
+            border-left-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Ajustes para el contenedor de número de domingos */
+        #sundayCountContainer {
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* --- ESTILOS DE IMPRESIÓN --- */
+        @media print {
+            body { background-color: white !important; }
+            #theme-toggle, #app-container > .bg-white > .space-y-6, 
+            #gemini-section, #app-container > .bg-white > .text-center, 
+            #error-message, .border-t-8, .mb-6, #apiKeyInput, .border-t-2 { display: none !important; }
+
+            #results {
+                display: block !important; margin: 0; padding: 20px;
+                box-shadow: none !important; border: none !important;
+                background-color: white !important; color: black !important;
+            }
+            
+            #app-container, #app { width: 100%; max-width: none; padding: 0; box-shadow: none !important;}
+
+            .dark, .dark *, .text-gray-900, .text-gray-800, .text-gray-700 { color: black !important; }
+            .text-sky-700, .text-sky-900 { color: #0c4a6e !important; }
+            .border-l-4 { border-left-color: #94a3b8 !important; }
+            .bg-yellow-100, .bg-green-100, .bg-red-100, .bg-sky-100, .bg-indigo-100, .bg-purple-100, .bg-pink-100 { background-color: #f3f4f6 !important; }
+            .text-purple-700 { color: #5b21b6 !important; }
+        }
+
+    </style>
+</head>
+
+<body class="p-4 pt-10 flex justify-center items-start min-h-screen"> 
+
+<div id="app-container" class="w-full max-w-lg relative">
+
+    <button id="theme-toggle" class="absolute top-0 right-0 m-4 p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-200" aria-label="Cambiar Tema">
+        <span id="theme-icon" class="text-xl">☀️</span>
+    </button>
+
+    <div id="app" class="bg-white dark:bg-gray-800 p-6 md:p-10 rounded-2xl w-full border-t-8 border-sky-600 shadow-2xl transition duration-300">
+        <h1 class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2 flex items-center">
+            <span class="mr-3 text-4xl">🧮</span>
+            Pago Extra LFT + AI
+        </h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">Calcula tus suplementos laborales (Horas Extra, Primas, Vacaciones, Aguinaldo, PTU) según la Ley Federal del Trabajo.</p>
+
+        <div class="space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="salaryAmount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Monto de tu Salario Base</label>
+                    <input type="number" id="salaryAmount" placeholder="Ej: 2000 (Salario Bruto del Periodo)" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                </div>
+                <div>
+                    <label for="payFrequency" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Periodicidad de Pago</label>
+                    <select id="payFrequency" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 transition duration-150">
+                        <option value="weekly" selected>Semanal (7 días)</option>
+                        <option value="biweekly">Quincenal (15 días)</option>
+                        <option value="monthly">Mensual (30.4 días)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="space-y-2 p-4 bg-sky-50 dark:bg-sky-900/50 rounded-lg border border-sky-200 dark:border-sky-700 transition duration-300">
+                <label class="block text-sm font-bold text-sky-700 dark:text-sky-300 mb-1">Tiempo Extra a Pagar</label>
+                <div class="flex space-x-4">
+                    <div class="w-1/2">
+                        <label for="overtimeHours" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Horas</label>
+                        <input type="number" id="overtimeHours" placeholder="Ej: 1" aria-label="Horas Extra" class="block w-full px-3 py-2 border border-sky-500 dark:border-sky-400 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150" min="0">
+                    </div>
+                    <div class="w-1/2">
+                        <label for="overtimeMinutes" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Minutos (0-59)</label>
+                        <input type="number" id="overtimeMinutes" placeholder="Ej: 30" aria-label="Minutos Extra" class="block w-full px-3 py-2 border border-sky-500 dark:border-sky-400 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150" min="0" max="59" onblur="validateMinutes('overtimeMinutes')">
+                    </div>
+                </div>
+                <p class="text-xs text-sky-600 dark:text-sky-400 mt-1">Regla LFT: Las primeras 9 son 2X, el excedente 3X.</p>
+            </div>
+            
+            <div class="p-4 bg-yellow-50 dark:bg-yellow-900/50 border border-yellow-200 dark:border-yellow-700 rounded-lg shadow-inner space-y-3 transition duration-300">
+                <div class="flex items-center">
+                    <input type="checkbox" id="workedSunday" class="h-5 w-5 text-yellow-600 border-yellow-300 dark:border-yellow-600 rounded focus:ring-yellow-500 bg-white dark:bg-gray-700" onchange="toggleSundayCount()">
+                    <label for="workedSunday" class="ml-3 text-sm font-bold text-yellow-800 dark:text-yellow-300">Trabajé en Domingo (Prima Dominical)</label>
+                </div>
+                
+                <div id="sundayCountContainer" class="hidden">
+                    <label for="sundayCount" class="block text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1">¿Cuántos domingos trabajaste en este periodo?</label>
+                    <input type="number" id="sundayCount" min="1" value="1" placeholder="1" aria-label="Número de Domingos Trabajados" class="block w-full px-3 py-2 border border-yellow-300 dark:border-yellow-600 rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                    <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1">Art. 71 LFT: La prima (25% del salario diario) se multiplica por los domingos trabajados.</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 rounded-lg shadow-inner space-y-3 transition duration-300">
+                <div class="flex items-center">
+                    <input type="checkbox" id="workedMandatoryRestDay" class="h-5 w-5 text-red-600 border-red-300 dark:border-red-600 rounded focus:ring-red-500 bg-white dark:bg-gray-700" onchange="toggleMandatoryHours()">
+                    <label for="workedMandatoryRestDay" class="ml-3 text-sm font-bold text-red-800 dark:text-red-300">Trabajé en Día de Descanso Obligatorio</label>
+                </div>
+                
+                <div id="mandatoryHoursContainer" class="space-y-2 hidden">
+                    <label for="mandatoryDayHours" class="block text-sm font-medium text-red-700 dark:text-red-400 mb-1">Tiempo Trabajado en este Día (Se paga 3X)</label>
+                    <div class="flex space-x-4">
+                         <div class="w-1/2">
+                            <label for="mandatoryDayHours" class="block text-xs font-medium text-red-600 dark:text-red-400 mb-1">Horas</label>
+                            <input type="number" id="mandatoryDayHours" min="0" placeholder="Ej: 8" aria-label="Horas en Día Obligatorio" class="block w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                        </div>
+                        <div class="w-1/2">
+                            <label for="mandatoryDayMinutes" class="block text-xs font-medium text-red-600 dark:text-red-400 mb-1">Minutos (0-59)</label>
+                            <input type="number" id="mandatoryDayMinutes" min="0" max="59" placeholder="Ej: 0" aria-label="Minutos en Día Obligatorio" class="block w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150" onblur="validateMinutes('mandatoryDayMinutes')">
+                        </div>
+                    </div>
+                    <p class="text-xs text-red-600 dark:text-red-400 mt-1">Art. 73 LFT: El pago es Salario (1X) + 200% Adicional (2X), resultando en 3X por hora.</p>
+                </div>
+            </div>
+            
+            <div class="p-4 bg-indigo-50 dark:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-700 rounded-lg shadow-inner space-y-3 transition duration-300">
+                <div class="flex items-center">
+                    <input type="checkbox" id="calculateVacation" class="h-5 w-5 text-indigo-600 border-indigo-300 dark:border-indigo-600 rounded focus:ring-indigo-500 bg-white dark:bg-gray-700" onchange="toggleVacationDetails()">
+                    <label for="calculateVacation" class="ml-3 text-sm font-bold text-indigo-800 dark:text-indigo-300">¿Deseas calcular Vacaciones y Prima Vacacional?</label>
+                </div>
+                
+                <div id="vacationDetailsContainer" class="space-y-2 hidden">
+                    <label class="block text-sm font-medium text-indigo-700 dark:text-indigo-400 mb-1">Antigüedad (Mínimo 1 año)</label>
+                    <div class="flex space-x-4">
+                        <div class="w-1/2">
+                            <label for="yearsOfService" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Años Completos</label>
+                            <input type="number" id="yearsOfService" min="0" value="1" placeholder="1" class="block w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                        </div>
+                        <div class="w-1/2">
+                            <label for="monthsOfService" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Meses Proporcionales (0-11)</label>
+                            <input type="number" id="monthsOfService" min="0" max="11" value="0" placeholder="0" class="block w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                        </div>
+                    </div>
+                    <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1">Art. 76, 80 LFT: Mínimo 12 días por el primer año, incrementando 2 días cada año hasta 5. Prima vacacional 25%.</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-purple-50 dark:bg-purple-900/50 border border-purple-200 dark:border-purple-700 rounded-lg shadow-inner space-y-3 transition duration-300">
+                <div class="flex items-center">
+                    <input type="checkbox" id="calculateAguinaldo" class="h-5 w-5 text-purple-600 border-purple-300 dark:border-purple-600 rounded focus:ring-purple-500 bg-white dark:bg-gray-700" onchange="toggleAguinaldoDetails()">
+                    <label for="calculateAguinaldo" class="ml-3 text-sm font-bold text-purple-800 dark:text-purple-300">¿Deseas calcular el Aguinaldo Proporcional?</label>
+                </div>
+                
+                <div id="aguinaldoDetailsContainer" class="space-y-2 hidden">
+                    <label for="daysWorkedAguinaldo" class="block text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">Días Trabajados en el Año (si no es el año completo)</label>
+                    <input type="number" id="daysWorkedAguinaldo" min="1" value="365" placeholder="Ej: 365" class="block w-full px-3 py-2 border border-purple-300 dark:border-purple-600 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150">
+                    <p class="text-xs text-purple-600 dark:text-purple-400 mt-1">Art. 87 LFT: Mínimo 15 días de salario. Si no trabajaste el año completo (365 días), se calcula el proporcional.</p>
+                </div>
+            </div>
+            
+
+            <div class="pt-2">
+                <label for="deductionsAmount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">¿Deducir Préstamo, Vale o Anticipo? (Usa '+' para sumar)</label>
+                <input type="text" id="deductionsAmount" placeholder="Ej: 100 + 250 + 50. Si no aplica, deja en blanco" class="mt-1 block w-full px-3 py-2 border border-purple-500 dark:border-purple-400 rounded-lg shadow-sm focus:ring-purple-500 focus:border-purple-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition duration-150" oninput="updateDeductionsTotal()">
+                
+                <p id="deductionsCurrentTotalDisplay" class="text-xs font-semibold text-purple-600 dark:text-purple-400 mt-1">Total Deducciones Calculado: $0.00 MXN</p>
+                <input type="hidden" id="deductionsCalculatedValue" value="0">
+            </div>
+
+            <button onclick="calculateSupplements()" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+                Calcular Pago Total Neto
+            </button>
+        </div>
+
+        <div id="results" class="mt-8 p-6 bg-gray-200 dark:bg-gray-700 rounded-xl border border-gray-300 dark:border-gray-600 shadow-inner hidden transition duration-300">
+            
+            <h2 class="text-xl font-bold text-gray-800 dark:text-white border-b border-gray-300 dark:border-gray-600 pb-2 mb-3">Resumen de Cálculos Base</h2>
+            
+            <div class="mb-4 text-sm space-y-1 text-gray-700 dark:text-gray-300">
+                <p>Salario Diario Base (Salario / Días Periodo): <span id="dailyRate" class="font-bold text-gray-900 dark:text-white"></span></p>
+                <p>Costo Hora Normal (Diario / 8h): <span id="normalHourlyRate" class="font-bold text-gray-900 dark:text-white"></span></p>
+                <p>Monto de Salario Base para el Periodo: <span id="baseAmount" class="font-bold text-gray-900 dark:text-white"></span></p>
+            </div>
+
+            <div class="py-2 mb-4">
+                <p class="text-md font-semibold text-gray-800 dark:text-gray-200">Total de Pagos Extra y (desglose a continuación por concepto):</p>
+                <p id="totalExtraPayDisplay" class="text-2xl font-extrabold text-sky-700 dark:text-sky-400"></p>
+            </div>
+            
+            <div id="vacationResult" class="py-2 border-l-4 border-indigo-600 dark:border-indigo-400 pl-3 mb-3 bg-indigo-100 dark:bg-indigo-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-indigo-800 dark:text-indigo-200">Cálculo de Vacaciones por Antigüedad:</p>
+                <ul class="text-xs space-y-1 mt-1 text-indigo-700 dark:text-indigo-300">
+                    <li>Antigüedad (Años/Meses): <span id="vacationAntiquity" class="font-bold"></span></li>
+                    <li>Días de Vacaciones Correspondientes: <span id="vacationDays" class="font-bold"></span></li>
+                    <li>Prima Vacacional (25%): <span id="vacationPrimaRate" class="font-bold"></span></li>
+                </ul>
+                <p id="vacationTotalPay" class="text-lg font-extrabold text-indigo-900 dark:text-indigo-100 mt-2"></p>
+                <p id="vacationNote" class="text-xs text-indigo-700 dark:text-indigo-300 mt-1"></p>
+            </div>
+            
+            <div id="aguinaldoResult" class="py-2 border-l-4 border-purple-600 dark:border-purple-400 pl-3 mb-3 bg-purple-100 dark:bg-purple-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-purple-800 dark:text-purple-200">Cálculo de Aguinaldo Proporcional (Art. 87 LFT):</p>
+                <ul class="text-xs space-y-1 mt-1 text-purple-700 dark:text-purple-300">
+                    <li>Días Trabajados en el Año: <span id="aguinaldoDaysWorked" class="font-bold"></span></li>
+                    <li>Días de Aguinaldo Proporcional: <span id="aguinaldoProportionalDays" class="font-bold"></span></li>
+                </ul>
+                <p id="aguinaldoTotalPay" class="text-lg font-extrabold text-purple-900 dark:text-purple-100 mt-2"></p>
+                <p id="aguinaldoNote" class="text-xs text-purple-700 dark:text-purple-300 mt-1"></p>
+            </div>
+
+            <div id="ptuResult" class="py-2 border-l-4 border-pink-600 dark:border-pink-400 pl-3 mb-3 bg-pink-100 dark:bg-pink-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-pink-800 dark:text-pink-200">Estimación de Reparto de Utilidades (PTU) (Art. 123 LFT):</p>
+                <ul class="text-xs space-y-1 mt-1 text-pink-700 dark:text-pink-300">
+                    <li>Base Salarial para PTU: <span id="ptuBaseSalary" class="font-bold"></span></li>
+                    <li>Días Base Trabajados: <span id="ptuBaseDays" class="font-bold"></span></li>
+                </ul>
+                <p id="ptuTotalPay" class="text-lg font-extrabold text-pink-900 dark:text-pink-100 mt-2"></p>
+                <p id="ptuNote" class="text-xs text-pink-700 dark:text-pink-300 mt-1"></p>
+            </div>
+
+            <div id="primaDominicalResult" class="py-2 border-l-4 border-yellow-600 dark:border-yellow-400 pl-3 mb-3 bg-yellow-100 dark:bg-yellow-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">Prima Dominical (Art. 71 LFT):</p>
+                <p id="primaDominicalPay" class="text-lg font-extrabold text-yellow-900 dark:text-yellow-100"></p>
+                <p id="sundayNote" class="text-xs text-yellow-700 dark:text-yellow-300 mt-1"></p>
+            </div>
+            
+            <div id="overtimeResult" class="py-2 border-l-4 border-green-600 dark:border-green-400 pl-3 mb-3 bg-green-100 dark:bg-green-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-green-800 dark:text-green-200">Pago por Horas Extra (Art. 67 LFT):</p>
+                <ul class="text-xs space-y-1 mt-1 text-green-700 dark:text-green-300">
+                    <li>Tiempo Extra Total: <span id="overtimeTotalTime" class="font-bold"></span></li>
+                    <li>Horas Dobles (Máx 9): <span id="doubleHours" class="font-bold"></span></li>
+                    <li>Horas Triples: <span id="tripleHours" class="font-bold"></span></li>
+                </ul>
+                <p id="overtimeTotalPay" class="text-lg font-extrabold text-green-900 dark:text-green-100"></p>
+            </div>
+
+            <div id="mandatoryDayResult" class="py-2 border-l-4 border-red-600 dark:border-red-400 pl-3 mb-4 bg-red-100 dark:bg-red-900 rounded-sm hidden">
+                <p class="text-sm font-semibold text-red-800 dark:text-red-200">Pago por Horas en Día Obligatorio (Art. 73 LFT):</p>
+                <p id="mandatoryDayPay" class="text-lg font-extrabold text-red-900 dark:text-red-100"></p>
+                <p id="mandatoryDayHoursDisplay" class="text-xs text-red-700 dark:text-red-300 mt-1"></p>
+            </div>
+
+            
+            <div class="mt-4 pt-4 border-t-2 border-gray-300 dark:border-gray-600">
+                <div class="flex justify-between items-center text-md font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <span>Subtotal (Salario Base + Extras):</span>
+                    <span id="subTotalPay" class="font-bold text-lg text-gray-900 dark:text-white"></span>
+                </div>
+                <div class="flex justify-between items-center text-md font-medium text-purple-700 dark:text-purple-400 mb-4">
+                    <span>Deducciones Aplicadas (Préstamos/Vales):</span>
+                    <span id="deductionsDisplay" class="font-bold text-lg"></span>
+                </div>
+                
+                <div class="flex justify-between items-center bg-sky-100 dark:bg-sky-700 p-3 rounded-lg shadow-inner">
+                    <span class="text-xl font-extrabold text-sky-800 dark:text-sky-200">GRAN TOTAL NETO:</span>
+                    <span id="granTotalNetoPay" class="text-2xl font-extrabold text-sky-900 dark:text-sky-100"></span>
+                </div>
+            </div>
+            
+            <p id="error-message" class="text-red-600 text-sm mt-4 hidden font-medium"></p>
+        </div>
+ 
+        <div class="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+            <span class="font-bold text-gray-600 dark:text-gray-300">Derechos Reservados (C) 2025 - Emilio Ortiz.</span> Este cálculo es una referencia basada en la Ley Federal del Trabajo de México actualizada.
+        </div>
+
+    </div>
+</div>
+
+<div id="validation-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-sm transform transition-all duration-300 scale-100 dark:border dark:border-red-600">
+        <h3 class="text-xl font-bold text-red-600 dark:text-red-400 mb-3 flex items-center">
+            <span class="mr-2">⚠️</span> ¡Error de Minutos!
+        </h3>
+        <p class="text-gray-700 dark:text-gray-300 mb-4 text-sm">
+            El valor de los minutos debe ser un número entre **0 y 59**. 
+            <br><br>Si ingresaste 60 o más, ya se considera una hora completa y debes sumarla al campo de "Horas". El valor ha sido corregido a 59.
+        </p>
+        <button onclick="closeModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition duration-200">
+            Entendido
+        </button>
+    </div>
+</div>
+
+<script>
+(() => {
+    'use strict';
+
+    // --- CONSTANTES ---
+    const HOURS_PER_DAY_FOR_CALC = 8;
+    const MAX_2X_HOURS = 9;
+    const DAYS_IN_YEAR = 365;
+
+    // --- UTILIDADES COMUNES ---
+    const $ = id => document.getElementById(id);
+    const parseNum = (v, fallback = 0) => {
+        if (v === undefined || v === null || v === '') return fallback;
+        const s = String(v).trim().replace(/,/g, '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? fallback : n;
+    };
+    const money = v => `$${Number(v || 0).toFixed(2)} MXN`;
+    const clampMinutes = v => Math.max(0, Math.min(59, parseInt(v || 0, 10) || 0));
+    const toDecimalHours = (hours, minutes) => {
+        const h = parseNum(hours, 0);
+        const m = clampMinutes(minutes);
+        if (h < 0) return 0;
+        return h + (m / 60);
+    };
+    const formatHoursHMM = decimal => {
+        if (!decimal || isNaN(decimal) || decimal <= 0) return "0 horas y 0 minutos";
+        const totalMinutes = Math.round(decimal * 60);
+        const hh = Math.floor(totalMinutes / 60);
+        const mm = totalMinutes % 60;
+        return `${hh} horas y ${mm} minutos`;
+    };
+
+    // Deducciones: "100 + 50 + 20" => 170
+    const sumDeductions = expr => {
+        if (!expr || typeof expr !== 'string') return 0;
+        const cleaned = expr.replace(/[^\d+.,-]/g, '').replace(/,/g, '.');
+        if (!cleaned) return 0;
+        const parts = cleaned.split('+').map(p => parseNum(p, 0));
+        return parts.reduce((s, n) => s + n, 0);
+    };
+
+    // Mensajes
+    function showMessage(message = '', type = 'info') {
+        const el = $('error-message');
+        if (!el) return;
+        if (!message) {
+            el.classList.add('hidden');
+            el.textContent = '';
+            return;
+        }
+        el.textContent = message;
+        el.classList.remove('hidden');
+        // Tu HTML original no tiene clases específicas para tipos de mensaje, se usa el estilo de error
+    }
+
+    // Helper: safe vacation days (same logic centralizada)
+    function getVacationDaysSafe(years) {
+        years = Math.max(0, Math.floor(years));
+        if (years < 1) return 0;
+        if (years === 1) return 12;
+        if (years <= 5) return 12 + (years - 1) * 2;
+        let days = 20;
+        const quinquenniums = Math.floor((years - 5) / 5);
+        days += quinquenniums * 2;
+        return days;
+    }
+
+
+    // ----------------------------------------------------
+    // --- LÓGICA DE CÁLCULO (calculateSupplements) ---
+    // ----------------------------------------------------
+    function calculateSupplements() {
+        // ... (Tu lógica de cálculo original, la cual he revisado y es funcional) ...
+
+        // Leer y limpiar inputs
+        const amount = parseNum($('salaryAmount')?.value, 0);
+        const frequency = $('payFrequency')?.value || 'weekly';
+
+        // Actualizar deducciones almacenadas en hidden
+        updateDeductionsTotal();
+
+        const deductionsAmount = parseNum($('deductionsCalculatedValue')?.value, 0);
+
+        const overtimeHoursInput = $('overtimeHours')?.value;
+        const overtimeMinutesInput = $('overtimeMinutes')?.value;
+        const legalOvertimeHoursDecimal = toDecimalHours(overtimeHoursInput, overtimeMinutesInput);
+
+        const workedSunday = !!$('workedSunday')?.checked;
+        const sundayCount = workedSunday ? Math.max(0, parseInt($('sundayCount')?.value || '0', 10)) : 0;
+
+        const workedMandatoryRestDay = !!$('workedMandatoryRestDay')?.checked;
+        const mandatoryDayHoursInput = $('mandatoryDayHours')?.value;
+        const mandatoryDayMinutesInput = $('mandatoryDayMinutes')?.value;
+        const mandatoryDayHoursDecimal = workedMandatoryRestDay ? toDecimalHours(mandatoryDayHoursInput, mandatoryDayMinutesInput) : 0;
+
+        const calculateVacation = !!$('calculateVacation')?.checked;
+        const yearsOfService = calculateVacation ? Math.max(0, parseInt($('yearsOfService')?.value || '0', 10)) : 0;
+        const monthsOfService = calculateVacation ? Math.max(0, parseInt($('monthsOfService')?.value || '0', 10)) : 0;
+
+        const calculateAguinaldo = !!$('calculateAguinaldo')?.checked;
+        const daysWorkedAguinaldo = calculateAguinaldo ? Math.max(0, parseInt($('daysWorkedAguinaldo')?.value || String(DAYS_IN_YEAR), 10)) : 0;
+
+        const calculatePTU = !!$('calculatePTU')?.checked;
+        const annualSalaryPTU = calculatePTU ? parseNum($('annualSalaryPTU')?.value, 0) : 0;
+        const daysWorkedPTU = calculatePTU ? Math.max(0, parseInt($('daysWorkedPTU')?.value || String(DAYS_IN_YEAR), 10)) : 0;
+        const companyPTUAmount = calculatePTU ? parseNum($('companyPTUAmount')?.value, 0) : 0;
+
+        // Elementos resultado (existentes en tu HTML original)
+        const resultsDiv = $('results');
+        const primaDominicalResult = $('primaDominicalResult');
+        const overtimeResult = $('overtimeResult');
+        const mandatoryDayResult = $('mandatoryDayResult');
+        const vacationResult = $('vacationResult');
+        const aguinaldoResult = $('aguinaldoResult');
+        const ptuResult = $('ptuResult');
+
+        // Ocultar/limpiar antes de calcular
+        if (resultsDiv) resultsDiv.classList.add('hidden');
+        [primaDominicalResult, overtimeResult, mandatoryDayResult, vacationResult, aguinaldoResult, ptuResult].forEach(el => { if (el) el.classList.add('hidden'); });
+        showMessage('', 'info');
+
+        // Validaciones básicas
+        if (amount <= 0) {
+            showMessage("Por favor, introduce un monto de salario BASE válido y positivo para calcular las tarifas.", 'error');
+            return;
+        }
+
+        // Cálculos base
+        const daysInPeriod = (frequency === 'weekly') ? 7 : (frequency === 'biweekly' ? 15 : 30.4);
+        const dailyRate = amount / daysInPeriod;
+        const normalHourlyRate = dailyRate / HOURS_PER_DAY_FOR_CALC;
+
+        let totalExtraPay = 0;
+
+        // ---------------- Vacaciones y Prima Vacacional ----------------
+        if (calculateVacation) {
+            const totalMonths = yearsOfService * 12 + monthsOfService;
+            const fullYearDays = getVacationDaysSafe(yearsOfService);
+            const nextYearDays = getVacationDaysSafe(yearsOfService + 1);
+            const proportionalDays = (nextYearDays / 12) * monthsOfService;
+            const totalDaysToPay = fullYearDays + proportionalDays;
+
+            const vacationPay = dailyRate * totalDaysToPay;
+            const primaVacacionalPay = vacationPay * 0.25;
+            const vacationTotalPay = vacationPay + primaVacacionalPay;
+
+            totalExtraPay += vacationTotalPay;
+
+            if ($('vacationAntiquity')) $('vacationAntiquity').textContent = `${yearsOfService} años y ${monthsOfService} meses`;
+            if ($('vacationDays')) $('vacationDays').textContent = `${totalDaysToPay.toFixed(2)} días (Incluye días proporcionales)`;
+            if ($('vacationPrimaRate')) $('vacationPrimaRate').textContent = `${money(primaVacacionalPay)} MXN (25% de ${money(vacationPay)})`.replace(' MXN', '');
+            if ($('vacationTotalPay')) $('vacationTotalPay').textContent = `${money(vacationTotalPay)} MXN`.replace(' MXN', '') || money(vacationTotalPay);
+            if ($('vacationNote')) {
+                $('vacationNote').textContent = (yearsOfService < 1)
+                    ? "Antigüedad menor a un año completo. Esto sería un pago proporcional en caso de finiquito o liquidación."
+                    : "Este es el pago total (Salario + Prima) de vacaciones correspondientes a tu antigüedad.";
+            }
+            if (vacationResult) vacationResult.classList.remove('hidden');
+        }
+
+        // ---------------- Aguinaldo ----------------
+        if (calculateAguinaldo) {
+            if (daysWorkedAguinaldo <= 0) {
+                showMessage("Advertencia: Ingresa los días trabajados en el año para calcular el aguinaldo proporcional.", 'warning');
+            } else {
+                const proportionalDays = (daysWorkedAguinaldo / DAYS_IN_YEAR) * 15;
+                const aguinaldoTotalPay = dailyRate * proportionalDays;
+                totalExtraPay += aguinaldoTotalPay;
+
+                if ($('aguinaldoDaysWorked')) $('aguinaldoDaysWorked').textContent = `${daysWorkedAguinaldo} días`;
+                if ($('aguinaldoProportionalDays')) $('aguinaldoProportionalDays').textContent = `${proportionalDays.toFixed(2)} días`;
+                if ($('aguinaldoTotalPay')) $('aguinaldoTotalPay').textContent = `${money(aguinaldoTotalPay)}`.replace(' MXN', '');
+                if ($('aguinaldoNote')) {
+                    $('aguinaldoNote').textContent = (daysWorkedAguinaldo < DAYS_IN_YEAR)
+                        ? `Cálculo proporcional por ${daysWorkedAguinaldo} días trabajados. (Base 15 días de salario por año completo)`
+                        : `Cálculo por año completo (365 días). Corresponde a 15 días de salario.`;
+                }
+                if (aguinaldoResult) aguinaldoResult.classList.remove('hidden');
+            }
+        }
+
+        // ---------------- PTU (estimación) ----------------
+        if (calculatePTU) {
+            let ptuNote = "Esta es una ESTIMACIÓN. El cálculo real depende de la información global de la empresa (PTU y nómina total). ";
+            let ptuTotalPay = 0;
+
+            if (annualSalaryPTU <= 0 || daysWorkedPTU < 60 || companyPTUAmount <= 0) {
+                ptuNote += "Para calcular, ingresa tu Salario Anual Total, tus días trabajados (mínimo 60) y el monto total de PTU de la empresa. El PTU se muestra como $0.00 MXN en este cálculo.";
+            } else {
+                const monthlyRate = dailyRate * 30.4;
+                const cap3Months = monthlyRate * 3;
+                // Sin datos globales no podemos asignar una parte justa automáticamente.
+                ptuTotalPay = 0;
+                ptuNote = `El cálculo real de PTU depende de factores globales de la empresa. Límite estimado: ${money(cap3Months)} (3 meses de salario).`;
+            }
+
+            if ($('ptuBaseSalary')) $('ptuBaseSalary').textContent = `${money(annualSalaryPTU)}`.replace(' MXN', '');
+            if ($('ptuBaseDays')) $('ptuBaseDays').textContent = `${daysWorkedPTU} días (Mínimo 60)`;
+            if ($('ptuTotalPay')) $('ptuTotalPay').textContent = `${money(ptuTotalPay)}`.replace(' MXN', '');
+            if ($('ptuNote')) $('ptuNote').textContent = ptuNote;
+            if (ptuResult) ptuResult.classList.remove('hidden');
+
+            if (companyPTUAmount <= 0) {
+                showMessage("Advertencia: El cálculo de PTU requiere el Monto Total a Repartir de la empresa para ser estimado.", 'warning');
+            }
+            totalExtraPay += ptuTotalPay; // aun si 0, mantener consistencia
+        }
+
+        // ---------------- Prima Dominical ----------------
+        let primaDominicalPay = 0;
+        if (workedSunday && sundayCount > 0) {
+            primaDominicalPay = dailyRate * 0.25 * sundayCount;
+            totalExtraPay += primaDominicalPay;
+            if ($('primaDominicalPay')) $('primaDominicalPay').textContent = `${money(primaDominicalPay)}`.replace(' MXN', '');
+            if ($('sundayNote')) $('sundayNote').textContent = `Calculado para ${sundayCount} domingo(s) trabajado(s).`;
+            if (primaDominicalResult) primaDominicalResult.classList.remove('hidden');
+        } else {
+            if ($('sundayNote')) $('sundayNote').textContent = "";
+        }
+
+        // ---------------- Día de Descanso Obligatorio (3X) ----------------
+        let mandatoryDayPay = 0;
+        if (workedMandatoryRestDay) {
+            if (mandatoryDayHoursDecimal > 0) {
+                const rate3X = normalHourlyRate * 3;
+                mandatoryDayPay = mandatoryDayHoursDecimal * rate3X;
+                totalExtraPay += mandatoryDayPay;
+                if ($('mandatoryDayPay')) $('mandatoryDayPay').textContent = `${money(mandatoryDayPay)}`.replace(' MXN', '');
+                if ($('mandatoryDayHoursDisplay')) $('mandatoryDayHoursDisplay').textContent = `Tiempo trabajado: ${formatHoursHMM(mandatoryDayHoursDecimal)}. (Pago a 3X por hora)`;
+                if (mandatoryDayResult) mandatoryDayResult.classList.remove('hidden');
+            } else {
+                showMessage("Advertencia: Marcaste 'Día Obligatorio' pero no ingresaste las horas trabajadas. El cálculo es $0.00 MXN para este rubro. Ingresa las horas para aplicar el 3X.", 'warning');
+            }
+        }
+
+        // ---------------- Horas Extra (2X y 3X) ----------------
+        let overtimeTotalPay = 0;
+        let doubleHoursDecimal = 0;
+        let tripleHoursDecimal = 0;
+        if (legalOvertimeHoursDecimal > 0) {
+            doubleHoursDecimal = Math.min(MAX_2X_HOURS, legalOvertimeHoursDecimal);
+            tripleHoursDecimal = Math.max(0, legalOvertimeHoursDecimal - MAX_2X_HOURS);
+
+            // ADICIONALES: 2X paga 1X adicional; 3X paga 2X adicional. 
+            const extraRate2X = normalHourlyRate * 2; // Pago total para 2X
+            const extraRate3X = normalHourlyRate * 3; // Pago total para 3X
+
+            overtimeTotalPay += doubleHoursDecimal * extraRate2X;
+            overtimeTotalPay += tripleHoursDecimal * extraRate3X;
+
+            totalExtraPay += overtimeTotalPay;
+
+            if ($('overtimeTotalPay')) $('overtimeTotalPay').textContent = `${money(overtimeTotalPay)}`.replace(' MXN', '');
+            if ($('overtimeTotalTime')) $('overtimeTotalTime').textContent = formatHoursHMM(legalOvertimeHoursDecimal);
+            if ($('doubleHours')) $('doubleHours').textContent = `${formatHoursHMM(doubleHoursDecimal)} (Paga 2X Total: $${(doubleHoursDecimal * extraRate2X).toFixed(2)})`;
+            if ($('tripleHours')) $('tripleHours').textContent = `${formatHoursHMM(tripleHoursDecimal)} (Paga 3X Total: $${(tripleHoursDecimal * extraRate3X).toFixed(2)})`;
+            if (overtimeResult) overtimeResult.classList.remove('hidden');
+        }
+
+        // ---------------- Totales finales ----------------
+        const subTotalPay = amount + totalExtraPay;
+        const granTotalNetoPay = subTotalPay - deductionsAmount;
+
+        if ($('dailyRate')) $('dailyRate').textContent = `${money(dailyRate)}`.replace(' MXN', '');
+        if ($('normalHourlyRate')) $('normalHourlyRate').textContent = `${money(normalHourlyRate)}`.replace(' MXN', '');
+        if ($('baseAmount')) $('baseAmount').textContent = `${money(amount)}`.replace(' MXN', '');
+
+        if ($('totalExtraPayDisplay')) $('totalExtraPayDisplay').textContent = `${money(totalExtraPay)}`.replace(' MXN', '');
+        if ($('subTotalPay')) $('subTotalPay').textContent = `${money(subTotalPay)}`.replace(' MXN', '');
+        if ($('deductionsDisplay')) $('deductionsDisplay').textContent = `-${money(deductionsAmount)}`.replace(' MXN', '');
+        if ($('granTotalNetoPay')) $('granTotalNetoPay').textContent = `${money(granTotalNetoPay)}`.replace(' MXN', '');
+
+        // Mostrar contenedor principal
+        if (resultsDiv) resultsDiv.classList.remove('hidden');
+    }
+
+
+    // ----------------------------------------------------
+    // --- LÓGICA DEL ASESOR LFT (askAILFT) - NUEVA ---
+    // ----------------------------------------------------
+    async function askAILFT() {
+        const apiKey = $('apiKeyInput')?.value.trim();
+        const userQuery = $('lftQuery')?.value.trim();
+        const responseContainer = $('aiResponseContainer');
+        const responseText = $('aiResponseText');
+        const button = $('askAILFTButton');
+        const buttonText = $('ai-button-text');
+        const spinner = $('ai-loading-spinner');
+
+        responseText.textContent = '';
+        responseContainer.classList.add('hidden');
+
+        if (!userQuery) {
+            alert('Por favor, escribe tu pregunta antes de consultar a la Inteligencia Artificial.');
+            return;
+        }
+
+        if (!apiKey) {
+            alert('ADVERTENCIA: Debes ingresar tu Clave de API (Gemini o GPT) en la parte inferior de la sección "Asesor LFT (IA)" para que la consulta funcione.');
+            return;
+        }
+
+        // 1. Mostrar estado de carga
+        button.disabled = true;
+        spinner.classList.remove('hidden');
+        buttonText.textContent = 'Consultando...';
+        button.classList.add('opacity-70');
+
+        // Ingeniería de Prompt: Darle contexto a la IA
+        const systemPrompt = `Eres un experto legal en la Ley Federal del Trabajo (LFT) de México. Tu función es proporcionar respuestas precisas, concisas y fundamentadas legalmente a las consultas de los trabajadores. Responde directamente la pregunta del usuario, citando el artículo de la LFT (Ej: Art. 76 LFT) cuando sea relevante. NO inventes información.`;
+        
+        // **ESTRUCTURA DE PETICIÓN (EJEMPLO CON GEMINI API)**
+        // **ADVERTENCIA:** Si usas otra API (como GPT), deberás cambiar el URL y el formato del 'body'.
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+        const payload = {
+            contents: [
+                { role: "user", parts: [{ text: `${systemPrompt}\n\nPregunta del usuario: ${userQuery}` }] }
+            ]
+        };
+
+        try {
+            const response = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                // Si la respuesta HTTP no es exitosa (ej: 400, 401)
+                const errorData = await response.json();
+                throw new Error(`Error de API: ${response.statusText}. Mensaje: ${errorData.error?.message || 'Revisa tu clave API o la URL.'}`);
+            }
+
+            const data = await response.json();
+            
+            // Extraer la respuesta (Estructura para Gemini)
+            const finalResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar una respuesta. Intenta reformular tu pregunta.';
+
+            responseText.textContent = finalResponse;
+            responseContainer.classList.remove('hidden');
+
+        } catch (error) {
+            console.error("Error al consultar la IA:", error);
+            responseText.textContent = `❌ Error: No se pudo completar la consulta. Asegúrate de que tu clave de API sea correcta y tenga los permisos necesarios. Mensaje: ${error.message}`;
+            responseContainer.classList.remove('hidden');
+            responseContainer.classList.add('bg-red-100', 'dark:bg-red-900/50'); // Estilo de error
+        } finally {
+            // 2. Ocultar estado de carga
+            button.disabled = false;
+            spinner.classList.add('hidden');
+            buttonText.textContent = 'Consultar al Experto IA';
+            button.classList.remove('opacity-70');
+            responseContainer.classList.remove('bg-red-100', 'dark:bg-red-900/50'); // Limpiar estilo de error
+        }
+    }
+
+
+    // ----------------------------------------------------
+    // --- LÓGICA DE TEMA (initTheme / toggleTheme) - MEJORADA ---
+    // ----------------------------------------------------
+
+    const THEME_KEY = 'theme-preference';
+    const THEME_MODES = ['light', 'dark', 'system']; // Ciclo de modos
+
+    function getThemePreference() {
+        return localStorage.getItem(THEME_KEY) || 'system';
+    }
+
+    function setHtmlTheme(theme) {
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark');
+
+        if (theme === 'system') {
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            root.classList.toggle('dark', systemDark);
+        } else {
+            root.classList.add(theme);
+        }
+    }
+
+    function updateThemeIcon(theme) {
+        const iconEl = $('theme-icon');
+        if (!iconEl) return;
+        switch (theme) {
+            case 'light':
+                iconEl.textContent = '☀️';
+                iconEl.setAttribute('title', 'Modo Claro');
+                break;
+            case 'dark':
+                iconEl.textContent = '🌙';
+                iconEl.setAttribute('title', 'Modo Oscuro');
+                break;
+            case 'system':
+            default:
+                iconEl.textContent = '💻';
+                iconEl.setAttribute('title', 'Modo de Sistema');
+                break;
+        }
+    }
+
+    function toggleTheme() {
+        const currentPreference = getThemePreference();
+        const currentIndex = THEME_MODES.indexOf(currentPreference);
+        const nextIndex = (currentIndex + 1) % THEME_MODES.length;
+        const newPreference = THEME_MODES[nextIndex];
+
+        localStorage.setItem(THEME_KEY, newPreference);
+        setHtmlTheme(newPreference);
+        updateThemeIcon(newPreference);
+    }
+    
+    // Función para inicializar el tema al cargar la página
+    function initTheme() {
+        const initialPreference = getThemePreference();
+        setHtmlTheme(initialPreference);
+        updateThemeIcon(initialPreference);
+
+        // Listener para cambios en el tema del sistema (si estamos en modo 'system')
+        window.matchMedia('(prefers-color-scheme: dark)').addListener(e => {
+            if (getThemePreference() === 'system') {
+                setHtmlTheme('system');
+            }
+        });
+    }
+
+
+    // --- FUNCIONES UI (toggles y validaciones no intrusivas) ---
+    function safeToggleById(id, show) {
+        const el = $(id);
+        if (!el) return;
+        if (show) el.classList.remove('hidden'); else el.classList.add('hidden');
+    }
+
+    function validateMinuteField(id) {
+        const el = $(id);
+        if (!el) return;
+        const v = clampMinutes(el.value);
+        if (v !== parseInt(el.value || '0', 10)) {
+            el.value = v;
+            const modal = $('validation-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+    }
+
+    // --- Deductions helper in UI ---
+    function updateDeductionsTotal() {
+        const inputField = $('deductionsAmount');
+        const totalDisplay = $('deductionsCurrentTotalDisplay');
+        const hiddenTotal = $('deductionsCalculatedValue');
+
+        let safeTotal = 0;
+        if (inputField && inputField.value) {
+            safeTotal = sumDeductions(inputField.value);
+        }
+        if (totalDisplay) totalDisplay.textContent = `Total Deducciones Calculado: ${money(safeTotal)}`;
+        if (hiddenTotal) hiddenTotal.value = safeTotal.toFixed(2);
+    }
+
+    // --- Modal close ---
+    function closeModal() {
+        const modal = $('validation-modal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // --- Vincular eventos públicos ---
+    function attachEventHandlersOnLoad() {
+        // Inicializar el tema
+        initTheme();
+
+        // Bind theme toggle
+        const themeToggleBtn = $('theme-toggle');
+        if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+
+        // Validaciones de minutos
+        ['overtimeMinutes', 'mandatoryDayMinutes'].forEach(id => {
+            const el = $(id);
+            if (el) el.addEventListener('blur', () => validateMinuteField(id));
+        });
+
+        // Toggle containers
+        window.toggleSundayCount = () => safeToggleById('sundayCountContainer', !!$('workedSunday').checked);
+        window.toggleMandatoryHours = () => safeToggleById('mandatoryHoursContainer', !!$('workedMandatoryRestDay').checked);
+        window.toggleVacationDetails = () => safeToggleById('vacationDetailsContainer', !!$('calculateVacation').checked);
+        window.toggleAguinaldoDetails = () => safeToggleById('aguinaldoDetailsContainer', !!$('calculateAguinaldo').checked);
+        window.togglePTUDetails = () => safeToggleById('ptuDetailsContainer', !!$('calculatePTU').checked);
+
+
+        // Deductions live update
+        if ($('deductionsAmount')) {
+            $('deductionsAmount').addEventListener('input', updateDeductionsTotal);
+        }
+
+        // Bind calculate button 
+        const calcBtn = document.querySelector('button[onclick="calculateSupplements()"]');
+        if (calcBtn) {
+            calcBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                calculateSupplements();
+            });
+        }
+        
+        // Bind AI button
+        const aiBtn = $('askAILFTButton');
+        if (aiBtn) aiBtn.addEventListener('click', askAILFT);
+        
+        // Close modal button
+        const modalCloseBtn = document.querySelector('#validation-modal button[onclick="closeModal()"]');
+        if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+
+        // Inicialización visual
+        updateDeductionsTotal();
+        if ($('results')) $('results').classList.add('hidden');
+    }
+
+    // Ejecutar al cargar la ventana
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachEventHandlersOnLoad);
+    } else {
+        attachEventHandlersOnLoad();
+    }
+
+    // Exponer funciones que tu HTML puede llamar por nombre (compatibilidad con botones inline)
+    window.calculateSupplements = calculateSupplements;
+    window.updateDeductionsTotal = updateDeductionsTotal;
+    window.closeModal = closeModal;
+    window.validateMinutes = validateMinuteField;
+    window.askAILFT = askAILFT; // Exponer nueva función IA
+    window.toggleTheme = toggleTheme; // Exponer nueva función de tema
+
+})();
+</script>
+
+</body>
+</html>
