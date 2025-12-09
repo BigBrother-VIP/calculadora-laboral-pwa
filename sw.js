@@ -5,7 +5,7 @@ const CACHE_NAME = CACHE_VERSION;
 // Archivos esenciales para que la PWA funcione sin conexión
 const URLS_TO_CACHE = [
   './', // Ruta raíz (importante)
-  './Calculadora Laboral.html', // Tu archivo principal
+  './index.html', // Tu archivo principal
   './manifest.json', 
   './calculator-icon-192.png', 
   /* Agrega aquí la URL de tu icono de 512x512 si lo creas */
@@ -53,4 +53,5 @@ self.addEventListener('fetch', event => {
         return caches.match(event.request);
       })
   );
+
 });
