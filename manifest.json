@@ -1,7 +1,7 @@
 {
-  "name": "Calculadora de Pago LFT + Experto IA",
+  "name": "Calculadora de Pago LFT",
   "short_name": "Calculadora LFT",
-  "start_url": "./Calculadora Laboral.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f1f5f9",
   "theme_color": "#0284c7",
@@ -19,4 +19,5 @@
       "type": "image/png"
     }
   ]
+
 }
