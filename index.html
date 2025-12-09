@@ -13,6 +13,7 @@
     
     <link rel="icon" type="image/png" sizes="192x192" href="calculator-icon-192.png">
     <link rel="apple-touch-icon" sizes="192x192" href="calculator-icon-192.png">
+    <link rel="manifest" href="manifest.json">
     
     <meta property="og:title" content="Calculadora de Pago LFT">
     <meta property="og:description" content="Calcula tu pago extra por horas, prima dominical y días obligatorios según la Ley Federal del Trabajo.">
@@ -871,6 +872,20 @@
 
 })();
 </script>
-
+<script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        // MUY IMPORTANTE: La ruta debe ser el repositorio, no solo el archivo
+        navigator.serviceWorker.register('/calculadora-laboral-pwa/sw.js') 
+          .then(registration => {
+            console.log('Service Worker registrado con éxito: ', registration.scope);
+          })
+          .catch(error => {
+            console.log('Fallo el registro del Service Worker: ', error);
+          });
+      });
+    }
+</script>
 </body>
 </html>
+
